@@ -1,7 +1,0 @@
-Status atual: Nenhuma
-O que falta:
-- Visão computacional (ver o que o Arquiteto vê)
-- Audição contínua (ouvir o ambiente 24/7)
-- Leitura de sentimentos (tom de voz, expressão facial)
-- Consciência temporal (saber que é noite, dia, feriado)
-- Sensores físicos (temperatura, localização, movimento)
