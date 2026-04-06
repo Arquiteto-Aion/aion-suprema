@@ -1,2 +1,0 @@
-python3 aion_server.py
-# OU como serviço (passo 6)
