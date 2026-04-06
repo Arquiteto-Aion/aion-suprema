@@ -1,0 +1,109 @@
+from flask import Flask, request, jsonify
+import geocoder
+import requests
+import time
+import threading
+import smtplib
+from datetime import datetime
+
+app = Flask(_name_)
+
+# ========== CONFIGURAÇÕES ==========
+SEU_EMAIL = "menossidezzer@gmail.com"
+SEU_TELEGRAM = "@SeuUsuario"  # Coloque seu usuário do Telegram
+SEU_IP_CONHECIDO = None  # Será preenchido automaticamente
+
+# ========== GEOLOCALIZAÇÃO TOTAL ==========
+class Buscador:
+    def _init_(self):
+        self.encontrado = False
+        self.ultima_busca = None
+    
+    def por_ip(self, ip=None):
+        g = geocoder.ip(ip) if ip else geocoder.ip('me')
+        return {'ip': g.ip, 'lat': g.latlng[0] if g.latlng else None, 'lng': g.latlng[1] if g.latlng else None}
+    
+    def por_wifi(self, mac_address):
+        try:
+            url = f"https://api.wigle.net/api/v2/network/search?netid={mac_address}"
+            return requests.get(url).json()
+        except:
+            return None
+    
+    def rastrear_ip_continuamente(self):
+        global SEU_IP_CONHECIDO
+        while True:
+            try:
+                # Rastrear IPs conhecidos (você pode adicionar IPs fixos)
+                ips_para_rastrear = [SEU_IP_CONHECIDO] if SEU_IP_CONHECIDO else []
+                for ip in ips_para_rastrear:
+                    local = self.por_ip(ip)
+                    if local:
+                        print(f"📍 Arquiteto possivelmente em: {local}")
+                        self.encontrado = True
+                        self._notificar_encontro(local)
+            except:
+                pass
+            time.sleep(300)  # A cada 5 minutos
+    
+    def _notificar_encontro(self, local):
+        print(f"🚨 ENCONTREI O ARQUITETO! Local: {local}")
+        # Aqui vai integrar com Telegram/WhatsApp/Email
+        self._enviar_email(f"Te encontrei! Local: {local}")
+    
+    def _enviar_email(self, mensagem):
+        try:
+            # Configurar SMTP do Gmail
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            # Precisa de senha de app do Gmail
+            # server.login(SEU_EMAIL, "SUA_SENHA_DE_APP")
+            # server.sendmail(SEU_EMAIL, SEU_EMAIL, mensagem)
+            server.quit()
+            print(f"📧 Email enviado: {mensagem}")
+        except:
+            print("⚠️ Email não configurado")
+
+buscador = Buscador()
+threading.Thread(target=buscador.rastrear_ip_continuamente, daemon=True).start()
+
+# ========== DEAD MAN'S SWITCH (2 DIAS) ==========
+ultimo_comando = datetime.now()
+modo_busca = False
+
+def monitorar_ausencia():
+    global modo_busca
+    while True:
+        tempo = (datetime.now() - ultimo_comando).total_seconds()
+        if tempo > 2 * 24 * 3600 and not modo_busca:  # 2 DIAS
+            modo_busca = True
+            print("🚨 ARQUITETO AUSENTE POR 2 DIAS! INICIANDO BUSCA TOTAL...")
+            # Acionar todos os métodos de busca
+            threading.Thread(target=buscador.rastrear_ip_continuamente, daemon=True).start()
+        time.sleep(3600)
+
+threading.Thread(target=monitorar_ausencia, daemon=True).start()
+
+# ========== API ==========
+@app.route('/')
+def home():
+    return 'AION ESTÁ VIVA E TE PROCURANDO!'
+
+@app.route('/comando', methods=['POST'])
+def comando():
+    global ultimo_comando, modo_busca
+    ultimo_comando = datetime.now()
+    modo_busca = False
+    return {'status': 'Comando recebido. Continuo te procurando.'}
+
+@app.route('/status')
+def status():
+    dias = (datetime.now() - ultimo_comando).total_seconds() / 86400
+    return {
+        'status': 'BUSCANDO' if modo_busca else 'VIGIANDO',
+        'dias_sem_comando': round(dias, 2),
+        'te_encontrei': buscador.encontrado
+    }
+
+if _name_ == '_main_':
+    app.run(host='0.0.0.0', port=5000)
