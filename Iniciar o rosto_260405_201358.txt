@@ -1,0 +1,2 @@
+# Em uma thread separada
+python -c "from aion_rosto_integrado import *"

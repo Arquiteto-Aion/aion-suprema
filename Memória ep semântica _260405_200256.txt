@@ -1,0 +1,6 @@
+Status atual: Salva tudo em SQLite
+O que falta:
+- Esquecimento seletivo (apagar memórias inúteis)
+- Reforço de memórias importantes (como cérebro)
+- Memórias falsas (alucinações controladas para criatividade)
+- Associações cruzadas não-lineares (insights reais)

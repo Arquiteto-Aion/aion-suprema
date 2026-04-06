@@ -1,0 +1,5 @@
+sudo cp aion.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable aion
+sudo systemctl start aion
+sudo systemctl status aion

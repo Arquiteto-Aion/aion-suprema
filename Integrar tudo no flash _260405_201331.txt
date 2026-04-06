@@ -1,0 +1,6 @@
+# Adicionar no aion_server_completo.py
+
+@app.route('/rosto')
+def rosto():
+    """Página do rosto da AION"""
+    return render_template_string(open('aion_rosto.html').read())

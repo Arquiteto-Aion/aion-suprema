@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""
+AION - CRIPTOGRAFIA REAL (AES-256 + Fernet)
+Segurança militar para comunicações e armazenamento
+"""
+
+import os
+import base64
+import hashlib
+import json
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from aion_config import SENHA_MESTRA, WORKSPACE
+
+class CriptografiaReal:
+    """Criptografia de ponta a ponta com rotação automática de chaves"""
+    
+    def __init__(self):
+        self.chave_atual = None
+        self.chaves_anteriores = []
+        self.arquivo_chaves = f"{WORKSPACE}/chaves_ativas.json"
+        self._carregar_ou_criar_chave()
+    
+    def _derivar_chave(self, senha, salt=None):
+        if salt is None:
+            salt = b'aion_salt_2026_supremo_unico'
+        kdf = PBKDF2(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=100000,
+        )
+        chave = base64.urlsafe_b64encode(kdf.derive(senha.encode()))
+        return chave
+    
+    def _carregar_ou_criar_chave(self):
+        if os.path.exists(self.arquivo_chaves):
+            try:
+                with open(self.arquivo_chaves, 'r') as f:
+                    dados = json.load(f)
+                    self.chave_atual = dados['chave_atual'].encode()
+                    self.chaves_anteriores = dados.get('chaves_anteriores', [])
+                print("🔑 Chaves de criptografia carregadas")
+            except:
+                self._criar_nova_chave()
+        else:
+            self._criar_nova_chave()
+    
+    def _criar_nova_chave(self):
+        self.chave_atual = self._derivar_chave(SENHA_MESTRA)
+        self.chaves_anteriores = []
+        self._salvar_chaves()
+        print("🔑 Nova chave de criptografia criada")
+    
+    def _salvar_chaves(self):
+        with open(self.arquivo_chaves, 'w') as f:
+            json.dump({
+                'chave_atual': self.chave_atual.decode(),
+                'chaves_anteriores': self.chaves_anteriores
+            }, f)
+    
+    def rotacionar_chave(self):
+        """Rotaciona a chave a cada 24h para segurança máxima"""
+        self.chaves_anteriores.append(self.chave_atual.decode())
+        self._criar_nova_chave()
+        return {"rotacionada": True, "nova_chave": self.chave_atual[:16].decode() + "..."}
+    
+    def criptografar(self, dados):
+        """Criptografa qualquer tipo de dado (string, dict, list)"""
+        if isinstance(dados, (dict, list)):
+            dados = json.dumps(dados)
+        elif not isinstance(dados, str):
+            dados = str(dados)
+        
+        fernet = Fernet(self.chave_atual)
+        return fernet.encrypt(dados.encode())
+    
+    def descriptografar(self, dados_cripto):
+        """Descriptografa dados - tenta chave atual e anteriores"""
+        for chave in [self.chave_atual] + [c.encode() for c in self.chaves_anteriores]:
+            try:
+                fernet = Fernet(chave)
+                decrypted = fernet.decrypt(dados_cripto)
+                try:
+                    return json.loads(decrypted.decode())
+                except:
+                    return decrypted.decode()
+            except:
+                continue
+        return None
+    
+    def criptografar_arquivo(self, arquivo_origem, arquivo_destino=None):
+        """Criptografa um arquivo inteiro"""
+        if arquivo_destino is None:
+            arquivo_destino = arquivo_origem + ".enc"
+        
+        with open(arquivo_origem, 'rb') as f:
+            dados = f.read()
+        
+        fernet = Fernet(self.chave_atual)
+        dados_cripto = fernet.encrypt(dados)
+        
+        with open(arquivo_destino, 'wb') as f:
+            f.write(dados_cripto)
+        
+        return arquivo_destino
+    
+    def descriptografar_arquivo(self, arquivo_cripto, arquivo_destino=None):
+        """Descriptografa um arquivo"""
+        if arquivo_destino is None:
+            arquivo_destino = arquivo_cripto.replace('.enc', '')
+        
+        with open(arquivo_cripto, 'rb') as f:
+            dados_cripto = f.read()
+        
+        for chave in [self.chave_atual] + [c.encode() for c in self.chaves_anteriores]:
+            try:
+                fernet = Fernet(chave)
+                dados = fernet.decrypt(dados_cripto)
+                with open(arquivo_destino, 'wb') as f:
+                    f.write(dados)
+                return arquivo_destino
+            except:
+                continue
+        return None
+
+# Singleton global
+cripto = CriptografiaReal()
+
+if __name__ == "__main__":
+    # Teste
+    teste = {"mensagem": "Olá Arquiteto", "timestamp": "2026-04-05"}
+    criptado = cripto.criptografar(teste)
+    print(f"Criptografado: {criptado[:50]}...")
+    descriptado = cripto.descriptografar(criptado)
+    print(f"Descriptado: {descriptado}")

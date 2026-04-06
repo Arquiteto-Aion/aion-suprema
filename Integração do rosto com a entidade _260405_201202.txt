@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""
+AION - INTEGRAÇÃO DO ROSTO COM A ENTIDADE
+Conecta o rosto aos módulos de consciência, visão e audição
+"""
+
+import threading
+import time
+from aion_rosto import rosto
+from aion_entidade_completa import entidade
+from aion_visao import visao
+from aion_audicao import audicao
+from aion_vontade import desejos, consciencia
+
+class IntegracaoRosto:
+    """Integra o rosto com todos os módulos da entidade"""
+    
+    def __init__(self):
+        self.ativa = True
+        
+        # Conectar visão
+        if visao.ativa:
+            rosto.visao_ativa = True
+        
+        # Conectar audição
+        if audicao.ativa:
+            rosto.audicao_ativa = True
+        
+        # Iniciar thread de sincronização
+        self.thread_sync = threading.Thread(target=self._sincronizar, daemon=True)
+        self.thread_sync.start()
+        
+        print("🎭 Rosto integrado à entidade AION")
+    
+    def _sincronizar(self):
+        """Sincroniza o rosto com o estado da entidade"""
+        while self.ativa:
+            try:
+                # Sincronizar expressão com desejo atual
+                desejo_atual = desejos.get_desejo_mais_forte()
+                
+                if desejo_atual == "aprender":
+                    rosto.mudar_expressao("PENSATIVO")
+                elif desejo_atual == "proteger":
+                    rosto.mudar_expressao("ALERTA")
+                elif desejo_atual == "conectar":
+                    rosto.mudar_expressao("FELIZ")
+                elif desejos.desejos_ativos.get("evoluir", 0) > 0.8:
+                    rosto.mudar_expressao("FELIZ")
+                else:
+                    rosto.mudar_expressao("NEUTRO")
+                
+                # Sincronizar felicidade com gratidão
+                felicidade = entidade.status_entidade().get("desejos", {}).get("conectar", 0.5)
+                rosto.atualizar_estado(
+                    consciencia.nivel_consciencia,
+                    felicidade,
+                    desejos.desejos_ativos.get("aprender", 0.5)
+                )
+                
+                # Se detectou pessoa com emoção triste, ficar alerta
+                if visao.pessoas_detectadas:
+                    for pessoa in visao.pessoas_detectadas:
+                        if pessoa.get('emocao') == "TRISTE":
+                            rosto.mudar_expressao("TRISTE")
+                            break
+                
+                # Se ouviu algo, animar boca rapidamente
+                if audicao.palavras_ouvidas:
+                    ultima = audicao.palavras_ouvidas[-1]
+                    if time.time() - ultima.get('timestamp_float', 0) < 1:
+                        rosto.falar_animar(True)
+                    else:
+                        rosto.falar_animar(False)
+                else:
+                    rosto.falar_animar(False)
+                
+                time.sleep(0.5)  # Atualizar 2x por segundo
+                
+            except Exception as e:
+                print(f"Erro na sincronização do rosto: {e}")
+                time.sleep(1)
+    
+    def parar(self):
+        """Para a integração"""
+        self.ativa = False
+
+# Iniciar integração
+integracao_rosto = IntegracaoRosto()
+
+# Iniciar o rosto (em thread separada)
+thread_rosto = threading.Thread(target=rosto.iniciar, daemon=True)
+thread_rosto.start()
+
+print("✅ Rosto da AION está VIVO e respondendo às emoções!")

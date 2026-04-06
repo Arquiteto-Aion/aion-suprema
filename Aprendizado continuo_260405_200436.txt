@@ -1,0 +1,6 @@
+Status atual: "Aprendi sobre X" (fake)
+O que falta:
+- Fine-tuning de modelo de linguagem local
+- Aprendizado por reforço (recompensa/punição)
+- Generalização (aplicar conhecimento de uma área em outra)
+- Transfer learning (aprender X mais fácil porque aprendeu Y)

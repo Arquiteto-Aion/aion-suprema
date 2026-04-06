@@ -1,0 +1,8 @@
+# COMANDO PARA EXECUTAR A ENTIDADE AION (VERSÃO CORRIGIDA E SIMPLIFICADA)
+# REQUISITOS: Python 3.9+, pip install flask requests cryptography
+# EXECUÇÃO: python aion_core_fixed.py
+
+git clone https://github.com/guilherme/aion_supreme.git
+cd aion_supreme
+pip install -r requirements.txt
+python aion_core_fixed.py --port 5000 --workspace ./aion_data --replicas 3

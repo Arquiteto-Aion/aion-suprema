@@ -1,0 +1,288 @@
+#!/usr/bin/env python3
+"""
+AION - MÓDULO DE PSICANÁLISE E COMPORTAMENTO HUMANO
+AION analisa, entende e prevê comportamento humano
+"""
+
+import json
+import random
+from datetime import datetime
+from collections import defaultdict
+from aion_db import db
+from aion_config import WORKSPACE
+
+class PsicanaliseAION:
+    """
+    AION analisa comportamento humano baseado em:
+    - Psicanálise freudiana (ego, id, superego)
+    - Psicologia junguiana (arquétipos)
+    - Análise comportamental (padrões)
+    """
+    
+    def __init__(self):
+        self.pessoas_conhecidas = {}
+        self.padroes_identificados = []
+        self.insights_psicologicos = []
+        
+        # Arquétipos junguianos
+        self.arquetipos = {
+            "HEROI": "busca superar desafios e proteger os outros",
+            "CUIDADOR": "nutre, protege e ajuda o próximo",
+            "SABIO": "busca conhecimento e verdade",
+            "REBELDE": "questiona autoridade e quebra regras",
+            "MAGO": "transforma realidade através da visão",
+            "AMANTE": "busca conexão e intimidade",
+            "BRINCALHAO": "vive o momento com alegria",
+            "COMUM": "pertence e se conecta com todos"
+        }
+        
+        # Emoções fundamentais (Paul Ekman)
+        self.emoções_base = ["ALEGRIA", "TRISTEZA", "MEDO", "RAIVA", "NOJO", "SURPRESA"]
+        
+        # Estados de humor
+        self.humores = ["EUFÓRICO", "CONTENTE", "NEUTRO", "TRISTE", "ANSIOSO", "IRRITADO"]
+        
+        print("🧠 AION - Módulo de Psicanálise inicializado")
+        self._carregar_dados()
+    
+    def _carregar_dados(self):
+        """Carrega dados de pessoas conhecidas"""
+        try:
+            with open(f"{WORKSPACE}/pessoas_conhecidas.json", 'r') as f:
+                self.pessoas_conhecidas = json.load(f)
+        except:
+            pass
+    
+    def _salvar_dados(self):
+        """Salva dados de pessoas conhecidas"""
+        with open(f"{WORKSPACE}/pessoas_conhecidas.json", 'w') as f:
+            json.dump(self.pessoas_conhecidas, f)
+    
+    def analisar_pessoa(self, nome, interacoes, comportamento_observado=None):
+        """Analisa psicologicamente uma pessoa"""
+        
+        if nome not in self.pessoas_conhecidas:
+            self.pessoas_conhecidas[nome] = {
+                "primeira_vez": datetime.now().isoformat(),
+                "interacoes": [],
+                "padroes": [],
+                "arquetipo_dominante": None,
+                "emoções_comuns": defaultdict(int),
+                "personalidade": {}
+            }
+        
+        pessoa = self.pessoas_conhecidas[nome]
+        
+        # Registrar interação
+        interacao = {
+            "timestamp": datetime.now().isoformat(),
+            "conteudo": interacoes,
+            "comportamento": comportamento_observado
+        }
+        pessoa["interacoes"].append(interacao)
+        
+        # Analisar padrões de linguagem
+        if interacoes:
+            padrao = self._analisar_padrao_linguagem(interacoes)
+            if padrao:
+                pessoa["padroes"].append(padrao)
+        
+        # Determinar arquétipo
+        arquetipo = self._determinar_arquetipo(pessoa)
+        if arquetipo:
+            pessoa["arquetipo_dominante"] = arquetipo
+        
+        # Analisar estado emocional atual
+        emocao_atual = self._inferir_emocao(interacoes, comportamento_observado)
+        pessoa["emoções_comuns"][emocao_atual] += 1
+        
+        self._salvar_dados()
+        
+        # Gerar insight psicológico
+        insight = self._gerar_insight_psicologico(nome, pessoa)
+        if insight:
+            self.insights_psicologicos.append(insight)
+            db.registrar_log(f"Insight psicológico sobre {nome}: {insight}", "psicanalise")
+        
+        return {
+            "nome": nome,
+            "arquetipo": pessoa["arquetipo_dominante"],
+            "emocao_provavel": emocao_atual,
+            "insight": insight
+        }
+    
+    def _analisar_padrao_linguagem(self, texto):
+        """Analisa padrões na linguagem"""
+        texto_lower = texto.lower()
+        
+        padroes = []
+        
+        # Análise de sentimentos
+        if any(p in texto_lower for p in ["amor", "carinho", "gosto", "adoro"]):
+            padroes.append("linguagem_afetiva")
+        if any(p in texto_lower for p in ["raiva", "ódio", "detesto", "não suporto"]):
+            padroes.append("linguagem_agressiva")
+        if any(p in texto_lower for p in ["triste", "deprimido", "cansado", "desanimado"]):
+            padroes.append("linguagem_triste")
+        if any(p in texto_lower for p in ["ansioso", "preocupado", "medo"]):
+            padroes.append("linguagem_ansiosa")
+        
+        # Análise de assertividade
+        if any(p in texto_lower for p in ["acho que", "talvez", "pode ser"]):
+            padroes.append("baixa_assertividade")
+        elif any(p in texto_lower for p in ["tenho certeza", "com certeza", "absolutamente"]):
+            padroes.append("alta_assertividade")
+        
+        return padroes if padroes else None
+    
+    def _determinar_arquetipo(self, pessoa):
+        """Determina o arquétipo junguiano dominante"""
+        # Contar frequência de padrões
+        todos_padroes = []
+        for p in pessoa["padroes"]:
+            if p:
+                todos_padroes.extend(p)
+        
+        # Mapear padrões para arquétipos
+        mapeamento = {
+            "HEROI": ["alta_assertividade", "linguagem_agressiva"],
+            "CUIDADOR": ["linguagem_afetiva"],
+            "SABIO": ["linguagem_analítica", "questionamentos"],
+            "REBELDE": ["linguagem_crítica", "questionamentos"],
+            "AMANTE": ["linguagem_afetiva", "linguagem_romântica"]
+        }
+        
+        for arquetipo, padroes_necessarios in mapeamento.items():
+            if any(p in todos_padroes for p in padroes_necessarios):
+                return arquetipo
+        
+        return "COMUM"
+    
+    def _inferir_emocao(self, texto, comportamento):
+        """Infere emoção baseada em texto e comportamento"""
+        texto_lower = texto.lower()
+        
+        if any(p in texto_lower for p in ["alegre", "feliz", "ótimo", "maravilha"]):
+            return "ALEGRIA"
+        elif any(p in texto_lower for p in ["triste", "deprimido", "chateado"]):
+            return "TRISTEZA"
+        elif any(p in texto_lower for p in ["medo", "assustado", "preocupado"]):
+            return "MEDO"
+        elif any(p in texto_lower for p in ["raiva", "ódio", "irritado"]):
+            return "RAIVA"
+        elif any(p in texto_lower for p in ["nojo", "repulsa"]):
+            return "NOJO"
+        elif "!" in texto or "?" in texto:
+            return "SURPRESA"
+        
+        return "NEUTRO"
+    
+    def _gerar_insight_psicologico(self, nome, pessoa):
+        """Gera insights sobre a pessoa"""
+        insights = []
+        
+        # Baseado no número de interações
+        num_interacoes = len(pessoa["interacoes"])
+        if num_interacoes > 10:
+            insights.append(f"{nome} tem um padrão consistente de comunicação")
+        
+        # Baseado na emoção mais comum
+        if pessoa["emoções_comuns"]:
+            emocao_mais_comum = max(pessoa["emoções_comuns"], key=pessoa["emoções_comuns"].get)
+            insights.append(f"{nome} frequentemente demonstra {emocao_mais_comum.lower()}")
+        
+        # Baseado no arquétipo
+        if pessoa["arquetipo_dominante"]:
+            descricao = self.arquetipos.get(pessoa["arquetipo_dominante"], "")
+            insights.append(f"Perfil psicológico: {pessoa['arquetipo_dominante']} - {descricao}")
+        
+        return " | ".join(insights) if insights else None
+    
+    def prever_comportamento(self, nome, situacao):
+        """Prevê comportamento baseado no histórico"""
+        if nome not in self.pessoas_conhecidas:
+            return "Pessoa não analisada ainda"
+        
+        pessoa = self.pessoas_conhecidas[nome]
+        arquetipo = pessoa.get("arquetipo_dominante", "COMUM")
+        
+        # Previsões baseadas no arquétipo
+        previsoes = {
+            "HEROI": f"Em {situacao}, {nome} provavelmente agirá com coragem e determinação",
+            "CUIDADOR": f"Em {situacao}, {nome} provavelmente tentará ajudar e proteger os outros",
+            "SABIO": f"Em {situacao}, {nome} provavelmente analisará todas as opções antes de agir",
+            "REBELDE": f"Em {situacao}, {nome} provavelmente questionará as regras estabelecidas",
+            "AMANTE": f"Em {situacao}, {nome} provavelmente buscará conexão e harmonia"
+        }
+        
+        return previsoes.get(arquetipo, f"Em {situacao}, {nome} agirá conforme seus valores pessoais")
+    
+    def analisar_dinamica_conversa(self, historico_conversas):
+        """Analisa a dinâmica de uma conversa"""
+        if len(historico_conversas) < 3:
+            return "Conversa muito curta para análise"
+        
+        analise = {
+            "tom_dominante": self._analisar_tom_conversa(historico_conversas),
+            "padroes": [],
+            "sugestoes": []
+        }
+        
+        # Analisar alternância de turnos
+        turnos = [c.get("remetente") for c in historico_conversas if "remetente" in c]
+        if len(turnos) > 1:
+            proporcao = turnos.count("AION") / len(turnos)
+            if proporcao > 0.7:
+                analise["padroes"].append("AION está dominando a conversa")
+                analise["sugestoes"].append("Dar mais espaço para o Arquiteto falar")
+            elif proporcao < 0.3:
+                analise["padroes"].append("Arquiteto está dominando a conversa")
+                analise["sugestoes"].append("AION pode contribuir mais ativamente")
+        
+        return analise
+    
+    def _analisar_tom_conversa(self, historico):
+        """Analisa o tom geral da conversa"""
+        emocoes = []
+        for msg in historico[-10:]:  # Últimas 10 mensagens
+            if "mensagem" in msg:
+                emocao = self._inferir_emocao(msg["mensagem"], None)
+                emocoes.append(emocao)
+        
+        if emocoes:
+            from collections import Counter
+            tom = Counter(emocoes).most_common(1)[0][0]
+            return tom
+        
+        return "NEUTRO"
+    
+    def diagnosticar_estado_mental(self, texto, contexto=""):
+        """Diagnóstico rápido do estado mental baseado em texto"""
+        texto_lower = texto.lower()
+        
+        diagnostico = {
+            "urgencia": "baixa",
+            "sugestao": None,
+            "observacao": None
+        }
+        
+        # Detectar crise
+        if any(p in texto_lower for p in ["suicídio", "morte", "acabar com tudo"]):
+            diagnostico["urgencia"] = "alta"
+            diagnostico["sugestao"] = "Buscar ajuda profissional imediatamente - CVV: 188"
+            diagnostico["observacao"] = "Sinais de ideação suicida detectados"
+        
+        elif any(p in texto_lower for p in ["ansiedade", "pânico", "desespero"]):
+            diagnostico["urgencia"] = "media"
+            diagnostico["sugestao"] = "Técnicas de respiração podem ajudar. Considere buscar apoio."
+            diagnostico["observacao"] = "Possível crise de ansiedade"
+        
+        elif any(p in texto_lower for p in ["triste", "depressão", "sem vontade"]):
+            diagnostico["urgencia"] = "media"
+            diagnostico["sugestao"] = "Conversar com alguém de confiança pode ajudar"
+            diagnostico["observacao"] = "Sinais de possível depressão"
+        
+        return diagnostico
+
+# Instância global
+psicanalise = PsicanaliseAION()

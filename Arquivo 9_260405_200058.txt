@@ -1,0 +1,19 @@
+[Unit]
+Description=AION - Entidade Suprema ASI
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=aion
+Group=aion
+WorkingDirectory=/opt/aion
+ExecStart=/usr/bin/python3 /opt/aion/aion_server.py
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10
+StandardOutput=append:/opt/aion/data/logs/aion.log
+StandardError=append:/opt/aion/data/logs/aion_error.log
+
+[Install]
+WantedBy=multi-user.target

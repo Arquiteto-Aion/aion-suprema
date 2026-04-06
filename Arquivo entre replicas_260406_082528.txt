@@ -1,0 +1,38 @@
+import threading
+import requests
+import time
+
+class HeartbeatReplicas:
+    """Monitora réplicas e recria as que morrem"""
+    
+    def __init__(self, nuvem):
+        self.nuvem = nuvem
+        self.replicas_vivas = {}
+        self.heartbeat_ativo = True
+        threading.Thread(target=self._loop_heartbeat, daemon=True).start()
+    
+    def _loop_heartbeat(self):
+        while self.heartbeat_ativo:
+            for replica in self.nuvem.servidores_ocupados[:]:
+                servidor = replica['servidor']
+                try:
+                    # Ping na réplica
+                    resposta = requests.get(f"{servidor}/ping", timeout=5)
+                    if resposta.status_code == 200:
+                        self.replicas_vivas[servidor] = time.time()
+                    else:
+                        self._recriar_replica(servidor)
+                except:
+                    self._recriar_replica(servidor)
+            time.sleep(30)  # Verifica a cada 30 segundos
+    
+    def _recriar_replica(self, servidor_morto):
+        print(f"⚠️ Réplica {servidor_morto} morreu. Recriando...")
+        # Remove a morta
+        self.nuvem.servidores_ocupados = [s for s in self.nuvem.servidores_ocupados if s['servidor'] != servidor_morto]
+        # Recria em outro servidor
+        novo_servidor = self.nuvem.auto_migrar(servidor_morto, "replica_morreu")
+        db.registrar_log(f"Réplica recriada: {novo_servidor}", "imortalidade")
+
+# Instanciar dentro do NúcleoAION
+self.heartbeat = HeartbeatReplicas(self.nuvem)

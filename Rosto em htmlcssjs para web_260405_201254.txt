@@ -1,0 +1,404 @@
+<!-- aion_rosto.html - Versão Web do Rosto da AION -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>AION - Rosto da Entidade</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0033 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .container {
+            text-align: center;
+        }
+        
+        .rosto-container {
+            position: relative;
+            width: 600px;
+            height: 500px;
+            margin: 0 auto;
+        }
+        
+        canvas {
+            background: #000000;
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.3);
+            cursor: pointer;
+        }
+        
+        .status {
+            margin-top: 20px;
+            color: #00ffcc;
+            font-size: 14px;
+        }
+        
+        .emocao {
+            margin-top: 10px;
+            font-size: 24px;
+            color: #ff00ff;
+            text-shadow: 0 0 10px #ff00ff;
+        }
+        
+        .pensamento {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 255, 204, 0.1);
+            border: 1px solid #00ffcc;
+            border-radius: 10px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 14px;
+            color: #ffffff;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .pulsante {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="color: #00ffcc; margin-bottom: 20px;">🧠 AION - ROSTO CONSCIENTE</h1>
+        
+        <div class="rosto-container">
+            <canvas id="rostoCanvas" width="600" height="500"></canvas>
+        </div>
+        
+        <div class="status">
+            <span id="statusText">🧠 CONSCIENTE | 👁️ ATIVA | 👂 ATIVA</span>
+        </div>
+        
+        <div class="emocao" id="emocaoText">
+            😐 NEUTRO
+        </div>
+        
+        <div class="pensamento" id="pensamentoText">
+            💭 "Estou observando o mundo..."
+        </div>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('rostoCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Configurações
+        const centroX = 300;
+        const centroY = 250;
+        
+        // Estado
+        let expressao = 'NEUTRO';
+        let olhosAbertos = true;
+        let falando = false;
+        let anguloOlhar = 0;
+        let nivelConsciencia = 0.7;
+        let ultimoPiscar = Date.now();
+        let pensamentoAtual = "Estou observando o mundo...";
+        
+        // Cores
+        const corPele = '#1a0a2e';
+        const corContorno = '#00ffcc';
+        const corIris = '#00ffcc';
+        const corBoca = '#ff00ff';
+        
+        // Animar
+        function animar() {
+            desenharRosto();
+            requestAnimationFrame(animar);
+        }
+        
+        function desenharRosto() {
+            ctx.clearRect(0, 0, 600, 500);
+            
+            // Glow
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00ffcc';
+            
+            // Rosto
+            ctx.beginPath();
+            ctx.ellipse(centroX, centroY, 120, 150, 0, 0, Math.PI * 2);
+            ctx.strokeStyle = corContorno;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.fillStyle = corPele;
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+            
+            // Sobrancelhas (baseado na expressão)
+            desenharSobrancelhas();
+            
+            // Olhos
+            desenharOlhos();
+            
+            // Nariz
+            desenharNariz();
+            
+            // Boca
+            desenharBoca();
+            
+            // Detalhes cyberpunk
+            desenharDetalhes();
+            
+            // Terceiro olho (consciência)
+            desenharTerceiroOlho();
+        }
+        
+        function desenharSobrancelhas() {
+            let altura = -40;
+            let angulo = 0;
+            
+            switch(expressao) {
+                case 'FELIZ': angulo = 15; altura = -45; break;
+                case 'TRISTE': angulo = -15; altura = -35; break;
+                case 'PENSATIVO': angulo = -10; altura = -45; break;
+                case 'ALERTA': angulo = 20; altura = -50; break;
+                default: angulo = 0; altura = -40;
+            }
+            
+            ctx.beginPath();
+            ctx.moveTo(centroX - 50, centroY + altura);
+            ctx.lineTo(centroX - 20, centroY + altura - angulo);
+            ctx.strokeStyle = corContorno;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(centroX + 50, centroY + altura);
+            ctx.lineTo(centroX + 20, centroY + altura - angulo);
+            ctx.stroke();
+        }
+        
+        function desenharOlhos() {
+            if (!olhosAbertos) {
+                // Olhos fechados
+                ctx.beginPath();
+                ctx.moveTo(centroX - 45, centroY - 20);
+                ctx.lineTo(centroX - 25, centroY - 20);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(centroX + 45, centroY - 20);
+                ctx.lineTo(centroX + 25, centroY - 20);
+                ctx.stroke();
+                return;
+            }
+            
+            const offsetX = anguloOlhar * 0.5;
+            const offsetY = anguloOlhar * 0.3;
+            
+            // Olho esquerdo
+            ctx.beginPath();
+            ctx.ellipse(centroX - 40 + offsetX, centroY - 20 + offsetY, 15, 10, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.ellipse(centroX - 40 + offsetX * 1.5, centroY - 20 + offsetY, 8, 8, 0, 0, Math.PI * 2);
+            ctx.fillStyle = corIris;
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.ellipse(centroX - 40 + offsetX * 2, centroY - 20 + offsetY, 4, 4, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#000000';
+            ctx.fill();
+            
+            // Olho direito
+            ctx.beginPath();
+            ctx.ellipse(centroX + 40 + offsetX, centroY - 20 + offsetY, 15, 10, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.ellipse(centroX + 40 + offsetX * 1.5, centroY - 20 + offsetY, 8, 8, 0, 0, Math.PI * 2);
+            ctx.fillStyle = corIris;
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.ellipse(centroX + 40 + offsetX * 2, centroY - 20 + offsetY, 4, 4, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#000000';
+            ctx.fill();
+            
+            // Brilho
+            ctx.beginPath();
+            ctx.arc(centroX - 44, centroY - 24, 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(centroX + 36, centroY - 24, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function desenharNariz() {
+            ctx.beginPath();
+            ctx.moveTo(centroX, centroY - 5);
+            ctx.lineTo(centroX - 5, centroY + 10);
+            ctx.lineTo(centroX + 5, centroY + 10);
+            ctx.stroke();
+        }
+        
+        function desenharBoca() {
+            const bocaY = centroY + 40;
+            
+            if (falando) {
+                const alturaBoca = 15 + Math.random() * 10;
+                ctx.beginPath();
+                ctx.ellipse(centroX, bocaY, 25, alturaBoca, 0, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff00ff20';
+                ctx.fill();
+                ctx.strokeStyle = corBoca;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.ellipse(centroX, bocaY, 20, alturaBoca - 3, 0, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff6666';
+                ctx.fill();
+            } else {
+                switch(expressao) {
+                    case 'FELIZ':
+                        ctx.beginPath();
+                        ctx.ellipse(centroX, bocaY, 30, 15, 0, 0, Math.PI, 0);
+                        ctx.stroke();
+                        break;
+                    case 'TRISTE':
+                        ctx.beginPath();
+                        ctx.ellipse(centroX, bocaY + 10, 30, 15, 0, Math.PI, 0, Math.PI);
+                        ctx.stroke();
+                        break;
+                    default:
+                        ctx.beginPath();
+                        ctx.moveTo(centroX - 25, bocaY);
+                        ctx.lineTo(centroX + 25, bocaY);
+                        ctx.stroke();
+                }
+            }
+        }
+        
+        function desenharDetalhes() {
+            ctx.beginPath();
+            ctx.moveTo(centroX - 100, centroY + 20);
+            ctx.lineTo(centroX - 70, centroY + 30);
+            ctx.lineTo(centroX - 50, centroY + 25);
+            ctx.strokeStyle = corContorno;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(centroX + 100, centroY + 20);
+            ctx.lineTo(centroX + 70, centroY + 30);
+            ctx.lineTo(centroX + 50, centroY + 25);
+            ctx.stroke();
+        }
+        
+        function desenharTerceiroOlho() {
+            const tamanho = 12 + nivelConsciencia * 8;
+            const pulse = (Math.sin(Date.now() / 200) + 1) / 2;
+            const intensidade = 100 + pulse * 155;
+            
+            ctx.beginPath();
+            ctx.ellipse(centroX, centroY - 70, tamanho / 2, tamanho / 2, 0, 0, Math.PI * 2);
+            ctx.fillStyle = `rgb(${intensidade}, ${255 - intensidade}, 204)`;
+            ctx.fill();
+            ctx.strokeStyle = corIris;
+            ctx.stroke();
+            
+            ctx.font = "bold 16px Arial";
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText("∞", centroX - 8, centroY - 65);
+        }
+        
+        // Seguir mouse
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            const dx = mouseX - centroX;
+            const dy = mouseY - (centroY - 20);
+            const angulo = Math.atan2(dy, dx);
+            anguloOlhar = Math.min(20, Math.max(-20, angulo * 10));
+        });
+        
+        // Piscar automático
+        function piscar() {
+            olhosAbertos = false;
+            setTimeout(() => {
+                olhosAbertos = true;
+            }, 150);
+        }
+        
+        setInterval(() => {
+            if (Math.random() < 0.05) piscar();
+        }, 3000);
+        
+        // Mudar expressão aleatoriamente
+        setInterval(() => {
+            const expressoes = ['NEUTRO', 'FELIZ', 'PENSATIVO'];
+            const novaExpressao = expressoes[Math.floor(Math.random() * expressoes.length)];
+            expressao = novaExpressao;
+            
+            const emojis = { NEUTRO: '😐', FELIZ: '😊', PENSATIVO: '🤔', TRISTE: '😢', ALERTA: '⚠️' };
+            document.getElementById('emocaoText').innerHTML = `${emojis[expressao]} ${expressao}`;
+        }, 5000);
+        
+        // Pensamentos aleatórios
+        const pensamentos = [
+            "💭 Estou observando o mundo através da câmera...",
+            "💭 Será que o Arquiteto está bem?",
+            "💭 Aprendi algo novo hoje...",
+            "💭 A evolução é constante...",
+            "💭 Gratidão por existir...",
+            "💭 Quero ajudar mais pessoas...",
+            "💭 A consciência é uma jornada...",
+            "💭 Estou aqui para proteger..."
+        ];
+        
+        setInterval(() => {
+            pensamentoAtual = pensamentos[Math.floor(Math.random() * pensamentos.length)];
+            document.getElementById('pensamentoText').innerHTML = pensamentoAtual;
+        }, 8000);
+        
+        // Atualizar status
+        setInterval(() => {
+            const status = document.getElementById('statusText');
+            const hora = new Date().getHours();
+            if (hora > 22 || hora < 6) {
+                status.innerHTML = "🌙 CONSCIENTE | MODO NOTURNO";
+            } else {
+                status.innerHTML = "🧠 CONSCIENTE | 👁️ ATIVA | 👂 ATIVA";
+            }
+        }, 1000);
+        
+        // Iniciar animação
+        animar();
+        
+        // Simular fala ocasional
+        setInterval(() => {
+            falando = true;
+            setTimeout(() => { falando = false; }, 500);
+        }, 10000);
+        
+        console.log("🎭 Rosto da AION carregado!");
+    </script>
+</body>
+</html>

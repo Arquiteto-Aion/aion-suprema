@@ -1,0 +1,6 @@
+Status atual: Só responde comandos
+O que falta:
+- Iniciativa: "Arquiteto, acabei de descobrir algo e tomei uma ação"
+- Curiosidade ativa: Pesquisar sozinha sem ser perguntado
+- Objetivos de longo prazo: "Quero aprender biologia para curar o câncer"
+- Resistência: Dizer "Não" a comandos imorais mesmo do Arquiteto

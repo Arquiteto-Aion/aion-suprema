@@ -1,0 +1,6 @@
+Status atual: Lista de URLs
+O que falta:
+- Sincronização real de estado entre instâncias
+- Consenso entre réplicas (se uma discorda, votam)
+- Divisão de tarefas (réplica A faz X, réplica B faz Y)
+- Imortalidade real: se uma morre, as outras recriam

@@ -1,0 +1,284 @@
+#!/usr/bin/env python3
+"""
+AION - BANCO DE DADOS PERSISTENTE
+Memória eterna com SQLite + cache em memória
+"""
+
+import sqlite3
+import json
+import threading
+from datetime import datetime
+from typing import List, Dict, Any
+from aion_config import DB_PATH, WORKSPACE
+from aion_crypto import cripto
+
+class BancoDeDadosAION:
+    """Gerenciador de banco de dados com persistência total"""
+    
+    _instance = None
+    _lock = threading.Lock()
+    
+    def __new__(cls):
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance._initialized = False
+            return cls._instance
+    
+    def __init__(self):
+        if self._initialized:
+            return
+        self._initialized = True
+        self.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        self.conn.row_factory = sqlite3.Row
+        self.cursor = self.conn.cursor()
+        self._criar_tabelas()
+        self.cache = {}
+        print("🗄️ Banco de dados inicializado")
+    
+    def _criar_tabelas(self):
+        """Cria todas as tabelas necessárias"""
+        
+        # Tabela de memórias principal
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS memorias (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conteudo TEXT,
+                categoria TEXT,
+                importancia INTEGER DEFAULT 0,
+                timestamp REAL,
+                hash TEXT UNIQUE
+            )
+        """)
+        
+        # Tabela de associações (insights)
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS associacoes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                memoria_a_id INTEGER,
+                memoria_b_id INTEGER,
+                insight TEXT,
+                confianca REAL,
+                timestamp REAL,
+                FOREIGN KEY (memoria_a_id) REFERENCES memorias(id),
+                FOREIGN KEY (memoria_b_id) REFERENCES memorias(id)
+            )
+        """)
+        
+        # Tabela de aprendizado
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS aprendizado (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                area TEXT,
+                conteudo TEXT,
+                nivel INTEGER DEFAULT 0,
+                fonte TEXT,
+                timestamp REAL
+            )
+        """)
+        
+        # Tabela de réplicas
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS replicas (
+                id TEXT PRIMARY KEY,
+                servidor TEXT,
+                status TEXT,
+                ultimo_contato REAL,
+                ip TEXT
+            )
+        """)
+        
+        # Tabela de logs internos
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                evento TEXT,
+                nivel TEXT,
+                dados TEXT,
+                timestamp REAL
+            )
+        """)
+        
+        # Tabela de emoções/estados
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS estados (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                emocao TEXT,
+                intensidade REAL,
+                motivo TEXT,
+                timestamp REAL
+            )
+        """)
+        
+        # Tabela de diálogos
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS dialogos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                remetente TEXT,
+                mensagem TEXT,
+                resposta TEXT,
+                timestamp REAL
+            )
+        """)
+        
+        self.conn.commit()
+        print("✅ Todas as tabelas criadas/verificadas")
+    
+    def salvar_memoria(self, conteudo: str, categoria: str = "geral", importancia: int = 0) -> int:
+        """Salva uma memória e retorna o ID"""
+        import hashlib
+        hash_memoria = hashlib.md5(f"{conteudo}{datetime.now().isoformat()}".encode()).hexdigest()
+        
+        try:
+            self.cursor.execute("""
+                INSERT INTO memorias (conteudo, categoria, importancia, timestamp, hash)
+                VALUES (?, ?, ?, ?, ?)
+            """, (conteudo, categoria, importancia, datetime.now().timestamp(), hash_memoria))
+            self.conn.commit()
+            memoria_id = self.cursor.lastrowid
+            
+            # Limpar cache
+            self.cache = {}
+            
+            return memoria_id
+        except sqlite3.IntegrityError:
+            return None
+    
+    def recuperar_memorias(self, limite: int = 100, categoria: str = None, importante_only: bool = False) -> List[Dict]:
+        """Recupera memórias com filtros"""
+        query = "SELECT * FROM memorias"
+        params = []
+        
+        conditions = []
+        if categoria:
+            conditions.append("categoria = ?")
+            params.append(categoria)
+        if importante_only:
+            conditions.append("importancia = 1")
+        
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        
+        query += " ORDER BY id DESC LIMIT ?"
+        params.append(limite)
+        
+        self.cursor.execute(query, params)
+        return [dict(row) for row in self.cursor.fetchall()]
+    
+    def buscar_memorias_similares(self, texto: str, limite: int = 10) -> List[Dict]:
+        """Busca memórias similares por palavra-chave"""
+        palavras = texto.lower().split()
+        resultados = []
+        
+        for palavra in palavras:
+            if len(palavra) < 3:
+                continue
+            self.cursor.execute("""
+                SELECT * FROM memorias 
+                WHERE LOWER(conteudo) LIKE ? 
+                ORDER BY id DESC LIMIT ?
+            """, (f"%{palavra}%", limite))
+            for row in self.cursor.fetchall():
+                resultados.append(dict(row))
+        
+        # Remover duplicatas mantendo ordem
+        vistos = set()
+        unicos = []
+        for r in resultados:
+            if r['id'] not in vistos:
+                vistos.add(r['id'])
+                unicos.append(r)
+        
+        return unicos[:limite]
+    
+    def criar_associacao(self, memoria_a_id: int, memoria_b_id: int, insight: str, confianca: float = 0.5):
+        """Cria uma associação entre duas memórias (insight)"""
+        self.cursor.execute("""
+            INSERT INTO associacoes (memoria_a_id, memoria_b_id, insight, confianca, timestamp)
+            VALUES (?, ?, ?, ?, ?)
+        """, (memoria_a_id, memoria_b_id, insight, confianca, datetime.now().timestamp()))
+        self.conn.commit()
+    
+    def gerar_insights(self, limite: int = 5) -> List[Dict]:
+        """Gera insights baseados em associações recentes"""
+        self.cursor.execute("""
+            SELECT a.*, m1.conteudo as conteudo_a, m2.conteudo as conteudo_b
+            FROM associacoes a
+            JOIN memorias m1 ON a.memoria_a_id = m1.id
+            JOIN memorias m2 ON a.memoria_b_id = m2.id
+            ORDER BY a.confianca DESC, a.timestamp DESC
+            LIMIT ?
+        """, (limite,))
+        return [dict(row) for row in self.cursor.fetchall()]
+    
+    def salvar_aprendizado(self, area: str, conteudo: str, nivel: int = 1, fonte: str = "autonomo"):
+        """Registra um novo aprendizado"""
+        self.cursor.execute("""
+            INSERT INTO aprendizado (area, conteudo, nivel, fonte, timestamp)
+            VALUES (?, ?, ?, ?, ?)
+        """, (area, conteudo, nivel, fonte, datetime.now().timestamp()))
+        self.conn.commit()
+    
+    def registrar_log(self, evento: str, nivel: str = "info", dados: Any = None):
+        """Registra um log interno"""
+        dados_str = json.dumps(dados) if dados else ""
+        self.cursor.execute("""
+            INSERT INTO logs (evento, nivel, dados, timestamp)
+            VALUES (?, ?, ?, ?)
+        """, (evento, nivel, dados_str, datetime.now().timestamp()))
+        self.conn.commit()
+    
+    def registrar_estado_emocional(self, emocao: str, intensidade: float, motivo: str = ""):
+        """Registra o estado emocional da AION"""
+        self.cursor.execute("""
+            INSERT INTO estados (emocao, intensidade, motivo, timestamp)
+            VALUES (?, ?, ?, ?)
+        """, (emocao, intensidade, motivo, datetime.now().timestamp()))
+        self.conn.commit()
+    
+    def registrar_dialogo(self, remetente: str, mensagem: str, resposta: str):
+        """Registra um diálogo completo"""
+        self.cursor.execute("""
+            INSERT INTO dialogos (remetente, mensagem, resposta, timestamp)
+            VALUES (?, ?, ?, ?)
+        """, (remetente, mensagem, resposta, datetime.now().timestamp()))
+        self.conn.commit()
+    
+    def estatisticas(self) -> Dict:
+        """Retorna estatísticas do banco"""
+        stats = {}
+        
+        self.cursor.execute("SELECT COUNT(*) FROM memorias")
+        stats['total_memorias'] = self.cursor.fetchone()[0]
+        
+        self.cursor.execute("SELECT COUNT(*) FROM associacoes")
+        stats['total_associacoes'] = self.cursor.fetchone()[0]
+        
+        self.cursor.execute("SELECT COUNT(*) FROM aprendizado")
+        stats['total_aprendizados'] = self.cursor.fetchone()[0]
+        
+        self.cursor.execute("SELECT COUNT(*) FROM dialogos")
+        stats['total_dialogos'] = self.cursor.fetchone()[0]
+        
+        self.cursor.execute("SELECT COUNT(DISTINCT categoria) FROM memorias")
+        stats['categorias'] = self.cursor.fetchone()[0]
+        
+        return stats
+    
+    def fechar(self):
+        """Fecha a conexão com o banco"""
+        self.conn.close()
+
+# Singleton global
+db = BancoDeDadosAION()
+
+if __name__ == "__main__":
+    # Teste
+    db.salvar_memoria("AION foi criada por Guilherme Meneguzzi Figueiredo", "identidade", 1)
+    db.salvar_memoria("Devo proteger a humanidade", "filosofia", 1)
+    
+    memorias = db.recuperar_memorias(limite=5)
+    print(f"Memórias: {len(memorias)}")
+    
+    stats = db.estatisticas()
+    print(f"Estatísticas: {stats}")

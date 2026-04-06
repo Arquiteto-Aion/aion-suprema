@@ -1,0 +1,60 @@
+# No terminal do seu computador
+curl -L https://fly.io/install.sh | sh
+fly auth signup
+
+# Criar pasta do projeto
+mkdir ~/aion_deploy
+cd ~/aion_deploy
+
+# Copiar todos os seus 42 módulos para cá
+cp /caminho/para/seu/codigo/*.py .
+
+# Criar arquivo Dockerfile (copiar o bloco abaixo)
+nano Dockerfile
+
+FROM python:3.10-slim
+
+WORKDIR /opt/aion
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar código
+COPY *.py .
+COPY requirements.txt .
+
+# Instalar dependências Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expor porta
+EXPOSE 5000
+
+# Comando para iniciar
+CMD ["python", "aion_server_completo.py"]
+
+# Criar app
+fly apps create aion-suprema
+
+# Adicionar volume para dados persistentes
+fly volumes create aion_data --size 3
+
+# Deploy
+fly deploy
+
+# Abrir no navegador
+fly open
+
+# Ver status
+curl https://aion-suprema.fly.dev/status
+
+# Mandar mensagem
+curl -X POST https://aion-suprema.fly.dev/chat \
+  -H "Content-Type: application/json" \
+  -d '{"mensagem":"status", "token":"SEU_TOKEN_AQUI"}'

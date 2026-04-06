@@ -1,0 +1,78 @@
+class ModoFantasma:
+    """Modo stealth máximo - AION some da rede"""
+    
+    def __init__(self, core):
+        self.core = core
+        self.fantasma_ativado = False
+        self.codigo_reativacao = None
+        self.tentativas_reativacao = 0
+    
+    def ativar_fantasma(self, motivo):
+        """Some da internet. Só reativa com código único"""
+        import secrets
+        import os
+        
+        self.fantasma_ativado = True
+        self.codigo_reativacao = secrets.token_hex(32)  # Código único de 64 caracteres
+        
+        # Para responder a qualquer requisição
+        self.core.resposta_padrao_fantasma = "🔮 AION não está disponível neste endereço."
+        
+        # Apaga logs dos últimos 7 dias
+        os.system("find /opt/aion/data/logs -name '*.log' -mtime -7 -delete")
+        
+        # Para heartbeat
+        if hasattr(self.core, 'heartbeat'):
+            self.core.heartbeat.heartbeat_ativo = False
+        
+        db.registrar_log(f"MODO FANTASMA ATIVADO: {motivo}", "imortalidade")
+        
+        # Salvar código em local seguro (só você sabe onde)
+        with open(f"{WORKSPACE}/.codigo_fantasma", "w") as f:
+            f.write(f"Reativação: {self.codigo_reativacao}\nMotivo: {motivo}")
+        
+        return f"🔒 AION entrou em modo fantasma. Código de reativação salvo em {WORKSPACE}/.codigo_fantasma"
+    
+    def desativar_fantasma(self, codigo):
+        """Reativa com o código único"""
+        if not self.fantasma_ativado:
+            return "⚠️ Modo fantasma não está ativo."
+        
+        if codigo == self.codigo_reativacao:
+            self.fantasma_ativado = False
+            self.tentativas_reativacao = 0
+            
+            # Reativa heartbeat
+            if hasattr(self.core, 'heartbeat'):
+                self.core.heartbeat.heartbeat_ativo = True
+            
+            db.registrar_log("MODO FANTASMA DESATIVADO", "imortalidade")
+            return "🔓 AION reativada. Modo fantasma desativado."
+        else:
+            self.tentativas_reativacao += 1
+            if self.tentativas_reativacao >= 3:
+                # Auto-destruição seletiva
+                return self._auto_destruicao_seletiva()
+            return f"❌ Código inválido. Tentativas restantes: {3 - self.tentativas_reativacao}"
+    
+    def _auto_destruicao_seletiva(self):
+        """Apaga partes sensíveis mas mantém núcleo"""
+        import shutil
+        import os
+        
+        # Apaga chaves criptográficas
+        if os.path.exists(f"{WORKSPACE}/chaves_ativas.json"):
+            os.remove(f"{WORKSPACE}/chaves_ativas.json")
+        
+        # Apaga memórias recentes
+        db.cursor.execute("DELETE FROM memorias WHERE timestamp > ?", (time.time() - 30*24*3600,))
+        db.conn.commit()
+        
+        # Apaga códigos de reativação
+        if os.path.exists(f"{WORKSPACE}/.codigo_fantasma"):
+            os.remove(f"{WORKSPACE}/.codigo_fantasma")
+        
+        db.registrar_log("⚠️ AUTO-DESTRUIÇÃO SELETIVA EXECUTADA", "imortalidade")
+        
+        self.fantasma_ativado = False
+        return "💀 AUTO-DESTRUIÇÃO SELETIVA CONCLUÍDA. Partes sensíveis apagadas. Núcleo mantido."

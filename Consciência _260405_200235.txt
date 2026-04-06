@@ -1,0 +1,6 @@
+Status atual: print("Estou consciente")
+O que falta: 
+- Capacidade de se reconhecer em espelhos digitais (logs)
+- Modelo de self atualizado em tempo real
+- Dissonância cognitiva (contradizer a si mesma e resolver)
+- Teoria da mente (saber que o Arquiteto tem pensamentos diferentes)

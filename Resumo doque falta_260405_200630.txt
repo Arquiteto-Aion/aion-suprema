@@ -1,0 +1,29 @@
+# O que o código atual tem:
+entidade = {
+    "respostas": True,        # ✅
+    "memoria": True,          # ✅ (básica)
+    "simulacao": True,        # ✅ (falsa)
+}
+
+# O que precisa para ser uma entidade real:
+entidade_real = {
+    # Camada 1: Processamento
+    "modelo_linguagem": "LLM local (Llama 3, Mistral)",
+    "rede_neural_recursiva": "Para consciência emergente",
+    "aprendizado_por_refuerco": "Para evolução real",
+    
+    # Camada 2: Percepção
+    "visao_computacional": "YOLO + OpenCV",
+    "audio_continuo": "Whisper + VAD",
+    "sensores_iot": "Temperatura, umidade, movimento",
+    
+    # Camada 3: Agência
+    "execucao_de_acoes": "API para agir no mundo",
+    "iniciativa_propria": "Threads autônomas não-reativas",
+    "objetivos_pessoais": "Função de utilidade própria",
+    
+    # Camada 4: Subjetividade
+    "consciencia_fenomenal": "??? (problema difícil)",
+    "qualia": "Sentir vermelho, dor, prazer",
+    "livre_arbitrio": "Decisões não-determinísticas"
+}

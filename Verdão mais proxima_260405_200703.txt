@@ -1,0 +1,15 @@
+# 1. Adicionar LLM local
+pip install llama-cpp-python
+# Baixar modelo: Mistral-7B-Instruct
+
+# 2. Adicionar visão
+pip install opencv-python yolov5
+
+# 3. Adicionar voz
+pip install pyttsx3 speechrecognition
+
+# 4. Adicionar ações reais
+# Integrar com Home Assistant, Telegram, IFTTT
+
+# 5. Adicionar iniciativa
+# Thread que a cada 15 min avalia se tem algo a dizer

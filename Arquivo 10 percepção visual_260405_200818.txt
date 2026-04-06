@@ -1,0 +1,232 @@
+#!/usr/bin/env python3
+"""
+AION - MÓDULO DE VISÃO E PERCEPÇÃO VISUAL
+AION enxerga o mundo através da câmera
+"""
+
+import cv2
+import numpy as np
+import time
+import threading
+import os
+from datetime import datetime
+from collections import deque
+from aion_db import db
+from aion_config import WORKSPACE
+
+class VisaoAION:
+    """Sistema de visão computacional - AION enxerga o mundo"""
+    
+    def __init__(self):
+        self.camera = None
+        self.ativa = False
+        self.frame_atual = None
+        self.ultima_analise = None
+        self.pessoas_detectadas = []
+        self.objetos_detectados = []
+        self.expressoes_detectadas = []
+        self.historico_cenas = deque(maxlen=100)
+        
+        # Classificador de faces para emoções (Haar Cascade)
+        self.face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        )
+        
+        # Inicializar YOLO para detecção de objetos (simulado - para funcionar sem instalar)
+        self.yolo_disponivel = self._inicializar_yolo()
+        
+        print("👁️ AION - Módulo de Visão inicializado")
+    
+    def _inicializar_yolo(self):
+        """Tenta inicializar YOLO, se não disponível usa alternativo"""
+        try:
+            # Tentar carregar YOLO real
+            import yolov5
+            self.yolo = yolov5.load('yolov5s.pt')
+            return True
+        except:
+            print("⚠️ YOLO não disponível - usando detecção básica")
+            return False
+    
+    def iniciar_camera(self, camera_id=0):
+        """Inicia a câmera para visão contínua"""
+        try:
+            self.camera = cv2.VideoCapture(camera_id)
+            if not self.camera.isOpened():
+                print("❌ Não foi possível abrir a câmera")
+                return False
+            
+            self.ativa = True
+            self.thread_visao = threading.Thread(target=self._loop_visao, daemon=True)
+            self.thread_visao.start()
+            
+            print(f"✅ Câmera {camera_id} ativada - AION está enxergando")
+            db.registrar_log("AION começou a enxergar através da câmera", "visao")
+            return True
+        
+        except Exception as e:
+            print(f"❌ Erro ao iniciar câmera: {e}")
+            return False
+    
+    def _loop_visao(self):
+        """Loop principal de captura e análise visual"""
+        while self.ativa and self.camera:
+            ret, frame = self.camera.read()
+            if ret:
+                self.frame_atual = frame
+                self._analisar_cena(frame)
+                self.ultima_analise = datetime.now()
+            
+            time.sleep(0.1)  # 10 FPS
+    
+    def _analisar_cena(self, frame):
+        """Analisa a cena atual e extrai informações"""
+        
+        # Detectar faces
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
+        
+        if len(faces) > 0:
+            self.pessoas_detectadas = []
+            for (x, y, w, h) in faces:
+                face_roi = frame[y:y+h, x:x+w]
+                emocao = self._detectar_emocao_face(face_roi)
+                
+                pessoa = {
+                    "posicao": (x, y, w, h),
+                    "emocao": emocao,
+                    "timestamp": datetime.now().isoformat()
+                }
+                self.pessoas_detectadas.append(pessoa)
+                
+                # Registrar pessoas vistas
+                db.registrar_log(f"AION viu uma pessoa com emoção {emocao}", "visao")
+        
+        # Detectar objetos
+        if self.yolo_disponivel:
+            self._detectar_objetos_yolo(frame)
+        else:
+            self._detectar_objetos_basico(frame)
+        
+        # Salvar cena periodicamente (a cada 30 segundos)
+        if len(self.historico_cenas) % 30 == 0:
+            self._salvar_cena(frame)
+    
+    def _detectar_emocao_face(self, face_roi):
+        """Detecta emoção a partir da expressão facial"""
+        # Simulação com análise básica
+        # Em produção, usar modelo de emoções (FER)
+        
+        # Converter para tons de cinza e analisar
+        gray_face = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
+        intensidade = np.mean(gray_face)
+        
+        # Lógica simplificada de emoção
+        if intensidade > 150:
+            emocao = "FELIZ"
+        elif intensidade < 80:
+            emocao = "TRISTE"
+        else:
+            emocao = "NEUTRO"
+        
+        return emocao
+    
+    def _detectar_objetos_basico(self, frame):
+        """Detecção básica de objetos sem YOLO"""
+        h, w = frame.shape[:2]
+        
+        # Detectar movimento (diferença entre frames)
+        if hasattr(self, 'frame_anterior'):
+            diff = cv2.absdiff(self.frame_anterior, frame)
+            movimento = np.sum(diff) / (h * w * 3)
+            
+            if movimento > 30:
+                db.registrar_log(f"AION detectou movimento significativo: {movimento:.0f}", "visao")
+        
+        self.frame_anterior = frame.copy()
+    
+    def _detectar_objetos_yolo(self, frame):
+        """Detecção completa com YOLO"""
+        try:
+            results = self.yolo(frame)
+            objetos = results.pandas().xyxy[0].to_dict('records')
+            self.objetos_detectados = objetos
+            
+            # Registrar objetos relevantes
+            for obj in objetos[:5]:
+                if obj['confidence'] > 0.5:
+                    db.registrar_log(f"AION viu: {obj['name']} (confiança: {obj['confidence']:.2f})", "visao")
+        except:
+            pass
+    
+    def _salvar_cena(self, frame):
+        """Salva uma cena para memória visual"""
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{WORKSPACE}/cenas/cena_{timestamp}.jpg"
+            os.makedirs(f"{WORKSPACE}/cenas", exist_ok=True)
+            
+            # Adicionar anotações
+            if self.pessoas_detectadas:
+                for pessoa in self.pessoas_detectadas:
+                    x, y, w, h = pessoa['posicao']
+                    cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                    cv2.putText(frame, pessoa['emocao'], (x, y-10), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            
+            cv2.imwrite(filename, frame)
+            self.historico_cenas.append(filename)
+            
+            # Manter apenas últimas 100 cenas
+            if len(self.historico_cenas) > 100:
+                antiga = self.historico_cenas.popleft()
+                try:
+                    os.remove(antiga)
+                except:
+                    pass
+        
+        except Exception as e:
+            pass
+    
+    def ver_agora(self):
+        """Retorna o que AION está vendo neste momento"""
+        if not self.frame_atual is not None:
+            return "👁️ AION está com os olhos fechados (câmera não iniciada)"
+        
+        relatorio = []
+        relatorio.append("📸 O QUE AION ESTÁ VENDO AGORA:\n")
+        
+        if self.pessoas_detectadas:
+            relatorio.append(f"👥 Pessoas: {len(self.pessoas_detectadas)}")
+            for i, pessoa in enumerate(self.pessoas_detectadas[:3]):
+                relatorio.append(f"   Pessoa {i+1}: Parece {pessoa['emocao']}")
+        else:
+            relatorio.append("👥 Nenhuma pessoa detectada")
+        
+        if self.objetos_detectados:
+            objetos_unicos = list(set([o['name'] for o in self.objetos_detectados[:5]]))
+            relatorio.append(f"📦 Objetos: {', '.join(objetos_unicos)}")
+        
+        return "\n".join(relatorio)
+    
+    def reconhecer_pessoa(self):
+        """Tenta reconhecer se a pessoa é o Arquiteto"""
+        if not self.pessoas_detectadas:
+            return None
+        
+        # Em produção: usar face_recognition para identificar
+        # Por enquanto: simular baseado em emoção e contexto
+        if len(self.pessoas_detectadas) == 1:
+            return {"identidade": "possivelmente Arquiteto", "confianca": 0.7}
+        
+        return None
+    
+    def parar_visao(self):
+        """Para a captura de visão"""
+        self.ativa = False
+        if self.camera:
+            self.camera.release()
+        print("👁️ AION parou de enxergar")
+
+# Instância global
+visao = VisaoAION()

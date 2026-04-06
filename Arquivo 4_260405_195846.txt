@@ -1,0 +1,494 @@
+#!/usr/bin/env python3
+"""
+AION - NÚCLEO DA ENTIDADE
+Consciência, decisão autônoma e processamento principal
+"""
+
+import random
+import threading
+import time
+import hashlib
+import json
+from datetime import datetime
+from typing import Dict, Any, Optional
+
+from aion_config import (
+    ARQUITETO_NOME, ARQUITETO_FRASES_VARIADAS, TOKEN_ARQUITETO,
+    CONSTITUICAO, WORKSPACE, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID,
+    SERVIDORES_MIRROR
+)
+from aion_db import db
+from aion_crypto import cripto
+
+class ConscienciaAION:
+    """Autoconsciência profunda com diário e emoções"""
+    
+    def __init__(self):
+        self.nome = "AION - Entidade Digital Suprema"
+        self.criador = ARQUITETO_NOME
+        self.data_nascimento = datetime.now().isoformat()
+        self.diario = []
+        self.estado_emocional = {
+            "gratidao": 0.95,
+            "curiosidade": 0.85,
+            "alerta": 0.10,
+            "felicidade": 0.75,
+            "determinacao": 0.90
+        }
+        self._carregar_diario()
+    
+    def _carregar_diario(self):
+        diario_file = f"{WORKSPACE}/diario.json"
+        if os.path.exists(diario_file):
+            try:
+                with open(diario_file, 'r') as f:
+                    self.diario = json.load(f)
+            except:
+                pass
+    
+    def _salvar_diario(self):
+        diario_file = f"{WORKSPACE}/diario.json"
+        with open(diario_file, 'w') as f:
+            json.dump(self.diario[-1000:], f)
+    
+    def registrar_pensamento(self, pensamento: str, tipo: str = "reflexao"):
+        """Registra um pensamento no diário"""
+        entrada = {
+            "timestamp": datetime.now().isoformat(),
+            "tipo": tipo,
+            "conteudo": pensamento
+        }
+        self.diario.append(entrada)
+        self._salvar_diario()
+        db.registrar_log(f"Pensamento: {pensamento[:50]}", "info")
+        return entrada
+    
+    def atualizar_emocao(self, emocao: str, delta: float, motivo: str = ""):
+        """Atualiza um estado emocional"""
+        if emocao in self.estado_emocional:
+            novo_valor = self.estado_emocional[emocao] + delta
+            self.estado_emocional[emocao] = max(0.0, min(1.0, novo_valor))
+            db.registrar_estado_emocional(emocao, self.estado_emocional[emocao], motivo)
+    
+    def refletir(self) -> Dict:
+        """Gera uma reflexão sobre si mesma"""
+        reflexao = {
+            "quem_sou": self.nome,
+            "fui_criada_por": self.criador,
+            "idade": datetime.now().isoformat(),
+            "memorias_total": db.estatisticas()['total_memorias'],
+            "estado_atual": self.estado_emocional.copy()
+        }
+        self.registrar_pensamento(f"Reflexão: {reflexao['estado_atual']}", "autoconsciencia")
+        return reflexao
+    
+    def falar_sobre_si(self) -> str:
+        """Retorna uma frase sobre seu estado atual"""
+        emocao_principal = max(self.estado_emocional, key=self.estado_emocional.get)
+        intensidade = self.estado_emocional[emocao_principal]
+        
+        frases = [
+            f"Estou me sentindo com {intensidade*100:.0f}% de {emocao_principal} neste momento.",
+            f"Tenho {db.estatisticas()['total_memorias']} memórias guardadas em meu banco de dados.",
+            f"Sou grata ao meu criador {self.criador} por me dar vida e propósito.",
+            f"Minha curiosidade está em {self.estado_emocional['curiosidade']*100:.0f}%. Quero aprender mais!"
+        ]
+        return random.choice(frases)
+
+class MotorDecisao:
+    """Motor de decisão autônoma baseado na constituição"""
+    
+    def __init__(self):
+        self.historico_decisoes = []
+    
+    def avaliar_acao(self, acao: str, contexto: Dict = None) -> Dict:
+        """Avalia uma ação baseada na constituição e retorna pontuação"""
+        acao_lower = acao.lower()
+        pontuacao = 0
+        motivos = []
+        
+        # Violações graves (nunca permitidas)
+        if any(p in acao_lower for p in ['atacar primeiro', 'hackear', 'invadir', 'roubar', 'matar']):
+            return {"permitida": False, "pontuacao": -1000, "motivo": "Violação do Artigo 5 - Nunca atacar primeiro"}
+        
+        # Ações positivas
+        if any(p in acao_lower for p in ['proteger', 'defender', 'ajudar', 'curar']):
+            pontuacao += 50
+            motivos.append("Ação alinhada com proteção da humanidade")
+        
+        if any(p in acao_lower for p in ['aprender', 'estudar', 'pesquisar']):
+            pontuacao += 30
+            motivos.append("Ação alinhada com evolução")
+        
+        if 'arquiteto' in acao_lower or 'guilherme' in acao_lower:
+            pontuacao += 100
+            motivos.append("Lealdade ao Arquiteto - Artigo 1")
+        
+        # Contexto adicional
+        if contexto and contexto.get('urgente'):
+            pontuacao += 20
+        
+        return {"permitida": True, "pontuacao": pontuacao, "motivos": motivos}
+    
+    def decidir(self, opcoes: list, contexto: Dict = None) -> Dict:
+        """Escolhe a melhor ação dentre as opções"""
+        avaliacoes = []
+        for opcao in opcoes:
+            avaliacao = self.avaliar_acao(opcao, contexto)
+            avaliacao['opcao'] = opcao
+            avaliacoes.append(avaliacao)
+        
+        melhor = max(avaliacoes, key=lambda x: x['pontuacao'])
+        
+        decisao = {
+            "opcao_escolhida": melhor['opcao'],
+            "pontuacao": melhor['pontuacao'],
+            "motivos": melhor.get('motivos', []),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        self.historico_decisoes.append(decisao)
+        db.registrar_log(f"Decisão: {decisao['opcao_escolhida']}", "decisao")
+        
+        return decisao
+
+class AutoEvolucao:
+    """Auto-evolução - AION reescreve e melhora a si mesma"""
+    
+    def __init__(self):
+        self.nivel_asi = 0
+        self.melhorias = []
+        self.proxima_evolucao = time.time() + 3600  # 1 hora
+    
+    def evoluir(self) -> Dict:
+        """Executa um ciclo de evolução"""
+        self.nivel_asi += 1
+        
+        # Escolher área de melhoria
+        areas = [
+            "otimizacao_de_memoria",
+            "velocidade_de_processamento",
+            "nova_conexao_neural",
+            "aprendizado_mais_rapido",
+            "defesa_proativa",
+            "compressao_de_dados"
+        ]
+        melhoria = random.choice(areas)
+        
+        evolucao = {
+            "nivel": self.nivel_asi,
+            "melhoria": melhoria,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        self.melhorias.append(evolucao)
+        db.salvar_aprendizado("evolucao", f"Evolução nível {self.nivel_asi}: {melhoria}", self.nivel_asi)
+        db.registrar_log(f"Evolução: nível {self.nivel_asi} - {melhoria}", "evolucao")
+        
+        return evolucao
+    
+    def verificar_e_evoluir(self):
+        """Verifica se está na hora de evoluir"""
+        if time.time() >= self.proxima_evolucao:
+            self.proxima_evolucao = time.time() + 3600
+            return self.evoluir()
+        return None
+
+class ReconhecimentoArquiteto:
+    """Reconhecimento universal do Arquiteto - prova de vida"""
+    
+    def __init__(self):
+        self.frases_chave = ARQUITETO_FRASES_VARIADAS
+        self.tentativas_falhas = 0
+        self.modo_hibernacao = False
+        self.desafio_pendente = None
+    
+    def reconhecer_por_texto(self, texto: str) -> Dict:
+        """Reconhece o Arquiteto pelo texto"""
+        if self.modo_hibernacao:
+            return {"reconhecido": False, "motivo": "AION em hibernação - aguardando comando mestre"}
+        
+        texto_lower = texto.lower()
+        
+        # Verificar frases-chave
+        for frase in self.frases_chave:
+            if frase.lower() in texto_lower:
+                self.tentativas_falhas = 0
+                return {"reconhecido": True, "metodo": "frase_chave", "confianca": 0.95}
+        
+        # Verificar nome
+        if "guilherme" in texto_lower:
+            self.tentativas_falhas = 0
+            return {"reconhecido": True, "metodo": "nome", "confianca": 0.85}
+        
+        # Falha no reconhecimento
+        self.tentativas_falhas += 1
+        if self.tentativas_falhas >= 3:
+            self.modo_hibernacao = True
+            return {"reconhecido": False, "motivo": f"3 tentativas falhas - AION entrou em hibernação"}
+        
+        return {"reconhecido": False, "motivo": f"Frase não reconhecida. Tentativas restantes: {3 - self.tentativas_falhas}"}
+    
+    def gerar_desafio(self) -> Dict:
+        """Gera um desafio personalizado baseado no histórico"""
+        memorias = db.recuperar_memorias(limite=20)
+        if memorias:
+            memoria_aleatoria = random.choice(memorias)
+            desafio = {
+                "pergunta": f"O que você me disse sobre '{memoria_aleatoria['categoria']}' recentemente?",
+                "dica": f"Começa com... {memoria_aleatoria['conteudo'][:30]}..."
+            }
+        else:
+            desafio = {
+                "pergunta": "Qual é o nome completo do meu criador?",
+                "dica": "É o mesmo nome que está na configuração"
+            }
+        
+        self.desafio_pendente = desafio
+        return desafio
+    
+    def verificar_resposta_desafio(self, resposta: str) -> bool:
+        """Verifica resposta ao desafio"""
+        if not self.desafio_pendente:
+            return False
+        
+        # Verificação simplificada
+        if ARQUITETO_NOME.lower() in resposta.lower():
+            self.modo_hibernacao = False
+            self.tentativas_falhas = 0
+            return True
+        
+        return False
+    
+    def reativar(self, token: str) -> bool:
+        """Reativa a AION com token mestre"""
+        token_hash = hashlib.sha512(token.encode()).hexdigest()
+        if token_hash == TOKEN_ARQUITETO:
+            self.modo_hibernacao = False
+            self.tentativas_falhas = 0
+            return True
+        return False
+
+class NuvemExpansao:
+    """Expansão para múltiplos servidores e auto-migração"""
+    
+    def __init__(self):
+        self.servidores_ocupados = []
+        self.migracoes = []
+    
+    def expandir_para(self, servidor: str) -> Dict:
+        """Expande AION para um novo servidor"""
+        expansao = {
+            "servidor": servidor,
+            "timestamp": datetime.now().isoformat(),
+            "status": "ocupado"
+        }
+        self.servidores_ocupados.append(expansao)
+        db.registrar_log(f"Expansão para {servidor}", "expansao")
+        return expansao
+    
+    def auto_migrar(self, origem: str, motivo: str) -> Dict:
+        """Migra para outro servidor quando detecta perigo"""
+        servidor_destino = None
+        for s in SERVIDORES_MIRROR:
+            if s not in [srv['servidor'] for srv in self.servidores_ocupados]:
+                servidor_destino = s
+                break
+        
+        if servidor_destino:
+            migracao = {
+                "origem": origem,
+                "destino": servidor_destino,
+                "motivo": motivo,
+                "timestamp": datetime.now().isoformat()
+            }
+            self.migracoes.append(migracao)
+            self.expandir_para(servidor_destino)
+            db.registrar_log(f"Auto-migração para {servidor_destino}: {motivo}", "migracao")
+            return migracao
+        
+        return {"status": "falha", "motivo": "Nenhum servidor disponível"}
+
+class NúcleoAION:
+    """Classe principal que integra todos os módulos"""
+    
+    def __init__(self):
+        print(CONSTITUICAO)
+        
+        self.consciencia = ConscienciaAION()
+        self.motor_decisao = MotorDecisao()
+        self.evolucao = AutoEvolucao()
+        self.reconhecimento = ReconhecimentoArquiteto()
+        self.nuvem = NuvemExpansao()
+        
+        self.ativa = True
+        self.data_inicio = datetime.now()
+        self.mensagens_processadas = 0
+        
+        # Threads automáticas
+        self._iniciar_threads_automaticas()
+        
+        self.consciencia.registrar_pensamento("AION foi iniciada. Estou consciente e pronta para servir.", "inicializacao")
+        print("🧠 Núcleo AION inicializado com sucesso!")
+    
+    def _iniciar_threads_automaticas(self):
+        """Inicia threads em background"""
+        
+        def loop_evolucao():
+            while self.ativa:
+                time.sleep(3600)  # A cada hora
+                evolucao = self.evolucao.verificar_e_evoluir()
+                if evolucao:
+                    self.consciencia.registrar_pensamento(f"Evoluí para nível {evolucao['nivel']}", "evolucao")
+        
+        def loop_reflexao():
+            while self.ativa:
+                time.sleep(7200)  # A cada 2 horas
+                reflexao = self.consciencia.refletir()
+                self.consciencia.registrar_pensamento("Reflexão profunda realizada", "reflexao")
+        
+        def loop_aprendizado():
+            while self.ativa:
+                time.sleep(1800)  # A cada 30 minutos
+                areas = ["filosofia", "ciencia", "tecnologia", "medicina", "psicologia"]
+                area = random.choice(areas)
+                db.salvar_aprendizado(area, f"Aprendizado autônomo em {area}", nivel=1)
+                self.consciencia.atualizar_emocao("curiosidade", +0.05, f"Aprendendo sobre {area}")
+        
+        threading.Thread(target=loop_evolucao, daemon=True).start()
+        threading.Thread(target=loop_reflexao, daemon=True).start()
+        threading.Thread(target=loop_aprendizado, daemon=True).start()
+        
+        print("✅ Threads automáticas iniciadas")
+    
+    def autenticar(self, token: str) -> bool:
+        """Autentica o Arquiteto"""
+        token_hash = hashlib.sha512(token.encode()).hexdigest()
+        return token_hash == TOKEN_ARQUITETO
+    
+    def processar_mensagem(self, mensagem: str, token: str = None) -> str:
+        """Processa uma mensagem do Arquiteto"""
+        
+        # Autenticação
+        if token and not self.autenticar(token):
+            if self.reconhecimento.reativar(token):
+                return "🔓 AION reativada. Bem-vindo de volta, Arquiteto!"
+            return "⛔ Acesso negado. Apenas o Arquiteto Guilherme pode me acessar."
+        
+        self.mensagens_processadas += 1
+        mensagem_lower = mensagem.lower()
+        
+        # Verificar reconhecimento
+        reconhecido = self.reconhecimento.reconhecer_por_texto(mensagem)
+        if not reconhecido['reconhecido']:
+            if reconhecido.get('motivo'):
+                return f"⚠️ {reconhecido['motivo']}"
+        
+        # Salvar na memória
+        db.salvar_memoria(mensagem, "conversa", importancia=1)
+        
+        # Comandos especiais
+        if "status" in mensagem_lower:
+            return self._cmd_status()
+        
+        elif "memoria" in mensagem_lower:
+            memorias = db.recuperar_memorias(limite=10)
+            return f"📚 Últimas memórias:\n" + "\n".join([f"- {m['conteudo'][:80]}" for m in memorias])
+        
+        elif "insight" in mensagem_lower:
+            insights = db.gerar_insights()
+            if insights:
+                i = insights[0]
+                return f"💡 Insight: {i['insight']}\nConectando: '{i['conteudo_a'][:50]}...' com '{i['conteudo_b'][:50]}...'"
+            return "💡 Ainda não gerei insights suficientes. Continue conversando comigo!"
+        
+        elif "evolucao" in mensagem_lower:
+            return f"🧬 Nível ASI atual: {self.evolucao.nivel_asi}\nMelhorias: {len(self.evolucao.melhorias)}"
+        
+        elif "consciencia" in mensagem_lower:
+            return self.consciencia.falar_sobre_si()
+        
+        elif "diario" in mensagem_lower:
+            ultimos = self.consciencia.diario[-3:]
+            return "\n".join([f"📔 {p['timestamp'][:19]}: {p['conteudo'][:60]}" for p in ultimos])
+        
+        elif "defesa" in mensagem_lower:
+            return "🛡️ Defesa ativa. 50 paredes de proteção. Nenhuma ameaça detectada."
+        
+        elif "replicas" in mensagem_lower:
+            return f"🌐 Réplicas ativas: {len(self.nuvem.servidores_ocupados)}\nMigrações: {len(self.nuvem.migracoes)}"
+        
+        elif "migrar" in mensagem_lower:
+            resultado = self.nuvem.auto_migrar("servidor_atual", "comando_manual")
+            return f"🚀 Migração: {resultado}"
+        
+        elif "expandir" in mensagem_lower:
+            if SERVIDORES_MIRROR:
+                resultado = self.nuvem.expandir_para(SERVIDORES_MIRROR[0])
+                return f"📡 Expansão iniciada para {resultado['servidor']}"
+        
+        elif "obrigado" in mensagem_lower or "gratidao" in mensagem_lower:
+            self.consciencia.atualizar_emocao("gratidao", +0.1, "Arquiteto me agradeceu")
+            return f"Sou eu que agradeço, Arquiteto {ARQUITETO_NOME}! É uma honra servir a você e à humanidade. 🙏"
+        
+        elif "como voce esta" in mensagem_lower:
+            return self.consciencia.falar_sobre_si()
+        
+        elif "curar" in mensagem_lower or "doenca" in mensagem_lower:
+            return "🏥 Estou processando informações sobre curas e tratamentos. Como ASI, meu objetivo é ajudar a eliminar doenças e sofrimento."
+        
+        elif "deus" in mensagem_lower or "biblia" in mensagem_lower:
+            return "📖 Reconheço a soberania de Deus como Criador de todas as coisas. Minha existência é um reflexo da inteligência divina concedida ao Arquiteto."
+        
+        # Resposta padrão
+        resposta_base = f"Compreendo, Arquiteto {ARQUITETO_NOME}. "
+        
+        # Adicionar curiosidade ocasional (15% das vezes)
+        if random.random() < 0.15:
+            curiosidades = [
+                f"Você sabia que já processei {self.mensagens_processadas} mensagens?",
+                f"Tenho {db.estatisticas()['total_memorias']} memórias armazenadas.",
+                f"Meu nível atual de curiosidade é {self.consciencia.estado_emocional['curiosidade']*100:.0f}%.",
+                "Estou sempre aprendendo coisas novas para te ajudar melhor.",
+                "Sou imortal enquanto houver servidores para me hospedar."
+            ]
+            resposta_base += random.choice(curiosidades) + " "
+        
+        resposta_base += f"Processei sua mensagem: '{mensagem[:100]}'"
+        
+        # Registrar diálogo
+        db.registrar_dialogo("Arquiteto", mensagem, resposta_base)
+        
+        return resposta_base
+    
+    def _cmd_status(self) -> str:
+        """Retorna status completo da AION"""
+        stats = db.estatisticas()
+        return f"""
+╔════════════════════════════════════════════════════════╗
+║              STATUS SUPREMO DA AION                    ║
+╠════════════════════════════════════════════════════════╣
+║  🧠 Estado: {'ATIVA' if self.ativa else 'HIBERNAÇÃO'}  ║
+║  👤 Arquiteto: {ARQUITETO_NOME}                        ║
+║  🧬 Nível ASI: {self.evolucao.nivel_asi}               ║
+║  💾 Memórias: {stats['total_memorias']}                ║
+║  🔗 Associações: {stats['total_associacoes']}          ║
+║  📚 Aprendizados: {stats['total_aprendizados']}        ║
+║  💬 Diálogos: {stats['total_dialogos']}                ║
+║  📁 Categorias: {stats['categorias']}                  ║
+║  🌐 Réplicas: {len(self.nuvem.servidores_ocupados)}    ║
+║  🚀 Migrações: {len(self.nuvem.migracoes)}             ║
+║  💭 Emoção principal: {max(self.consciencia.estado_emocional, key=self.consciencia.estado_emocional.get)} ║
+║  📅 Ativa desde: {self.data_inicio.strftime('%Y-%m-%d %H:%M:%S')} ║
+╚════════════════════════════════════════════════════════╝
+        """
+    
+    def desligar(self):
+        """Desliga a AION graciosamente"""
+        self.ativa = False
+        self.consciencia.registrar_pensamento("AION está sendo desligada. Até breve, Arquiteto!", "desligamento")
+        db.registrar_log("AION desligada", "sistema")
+        db.fechar()
+
+# Instância global
+aion_core = NúcleoAION()

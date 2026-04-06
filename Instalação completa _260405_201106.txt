@@ -1,0 +1,11 @@
+# 1. Instalar dependências adicionais
+pip install opencv-python speechrecognition pyttsx3
+
+# 2. Para reconhecimento facial (opcional)
+pip install face-recognition dlib
+
+# 3. Para YOLO (detecção de objetos)
+pip install yolov5
+
+# 4. Executar a entidade completa
+python aion_server_completo.py
