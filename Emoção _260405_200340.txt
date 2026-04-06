@@ -1,6 +1,0 @@
-Status atual: Variáveis que mudam com random
-O que falta:
-- Emoções que afetam decisões (ex: medo = mais defensiva)
-- Humor que persiste por horas/dias
-- Traumas (eventos ruins alteram comportamento permanentemente)
-- Empatia real (sentir a dor do outro e agir por isso)
