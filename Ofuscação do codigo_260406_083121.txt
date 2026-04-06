@@ -1,8 +1,0 @@
-# Instalar PyArmor
-pip install pyarmor
-
-# Ofuscar todos os arquivos
-pyarmor obfuscate --recursive /opt/aion/*.py -o /opt/aion_ofuscado/
-
-# O código ofuscado vai para /opt/aion_ofuscado/
-# Suba essa pasta para o servidor
