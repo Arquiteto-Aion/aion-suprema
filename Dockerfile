@@ -1,18 +1,6 @@
 FROM python:3.10-slim
-
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN pip install --no-cache-dir \
-    flask \
-    geocoder \
-    requests
-
+RUN pip install flask geocoder requests
 COPY . .
-
 EXPOSE 5000
-
-CMD ["python", "aion_autonoma.py"]
+CMD ["python", "aion_server_completo.py"
