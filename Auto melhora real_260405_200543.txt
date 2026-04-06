@@ -1,6 +1,0 @@
-Status atual: incrementa contador
-O que falta:
-- Reescrever o próprio código e executar a nova versão
-- Detectar bugs e corrigi-los sozinha
-- Otimizar algoritmos sem intervenção humana
-- Expandir para mais hardware (distribuída)
