@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 WORKDIR /app
 RUN pip install flask
-COPY app.py .
+COPY aion_server_completo.py .
 EXPOSE 5000
-CMD ["python", "app.py"]
+CMD ["python", "aion_server_completo.py"]
